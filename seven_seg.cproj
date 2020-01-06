@@ -136,7 +136,19 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="i2cmaster.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="main.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="rtc.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="rtc.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="twimaster.c">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>

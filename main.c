@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define F_CPU 1000000
+#define F_CPU 1000000UL
 #include <util/delay.h>
 
 #define HC595_PORT PORTC
@@ -29,9 +29,9 @@ void hc595_clock_pulse(void)
 void hc595_latch_pulse(void)
 {
 	HC595_PORT |= 1<<HC595_LATCH;
-	_delay_us(5);
+	//_delay_us(5);
 	HC595_PORT &= ~(1<<HC595_LATCH);
-	_delay_us(5);
+	//_delay_us(5);
 }
 
 void shift_bytes_msb(uint8_t bytes[], unsigned int numberOfBytes)
@@ -286,21 +286,45 @@ void write_3dig_signed_number(int number)
 	}
 }
 
+#include "i2cmaster.h"
+#include "rtc.h"
 
 int main(void)
 {
 		HC595_DDR = 1<<HC595_DATA | 1<<HC595_CLOCK | 1<<HC595_LATCH;
 		ANODES_DDR =  1<<ONES_OFFSET | 1<<TENS_OFFSET | 1<<HUNDREDS_OFFSET | 1<<THOUSANDS_OFFSET;
 		
+		// Peter's lib
+		i2c_init();
+		rtc_write(DS3231_CONTROL_REG_OFFSET,0x00);
+		rtc_write(DS3231_HOURS_REG_OFFSET,12);
+		rtc_write(DS3231_MINUTES_REG_OFFSET,47);
+		rtc_write(DS3231_SECONDS_REG_OFFSET,32);
+		unsigned char rtc_data = NEGATIVE_SIGN;
+		//unsigned int  x =0;
+		
+		
     	while (1) 
 		{
 			//write_4dig_unsigned_number(882);
-			write_3dig_signed_number(-1000);
+			//write_3dig_signed_number(-1000);
+			
 			//p = ONES;
 			//write_digit(ONES, 2, true);
 			//write_digit(TENS, 3, true);
 			//write_digit(HUNDREDS, 4, true);
 			//write_digit(THOUSANDS, 5, true);
+			
+			// Peter's lib
+			rtc_data = rtc_read(DS3231_SECONDS_REG_OFFSET);
+			//write_4dig_unsigned_number((unsigned int)rtc_data);
+			shift_byte_msb(rtc_data);
+			//write_3dig_signed_number(x);
+			//x++;
+			//_delay_ms(50);
+			//x++;
+			
+			_delay_ms(500);
 		}
 }
 
