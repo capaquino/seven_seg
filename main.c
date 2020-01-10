@@ -29,9 +29,9 @@ void hc595_clock_pulse(void)
 void hc595_latch_pulse(void)
 {
 	HC595_PORT |= 1<<HC595_LATCH;
-	//_delay_us(5);
+	//_delay_us(1);
 	HC595_PORT &= ~(1<<HC595_LATCH);
-	//_delay_us(5);
+	//_delay_us(1);
 }
 
 void shift_bytes_msb(uint8_t bytes[], unsigned int numberOfBytes)
@@ -164,22 +164,30 @@ void write_digit(Position position, uint8_t digit, bool decimalPoint)
 	
 	// This must come after shift byte msb BECAUSE there are delays in shift byte msb (see latch function)
 	// did reduce latch delays to microsecond range so this might be okay now.
-	ANODES_PORT |= 1<<ONES_OFFSET | 1<<TENS_OFFSET | 1<<HUNDREDS_OFFSET | 1<<THOUSANDS_OFFSET; // won't affect D4-7
+	
+	//ANODES_PORT |= 1<<ONES_OFFSET | 1<<TENS_OFFSET | 1<<HUNDREDS_OFFSET | 1<<THOUSANDS_OFFSET; // won't affect D4-7
+	
+	// if using npn transistors
+	ANODES_PORT &= ~(1<<ONES_OFFSET | 1<<TENS_OFFSET | 1<<HUNDREDS_OFFSET | 1<<THOUSANDS_OFFSET); // won't affect D4-7
 	
 	// Set anode AKA digit position
 	switch (position)
 	{
 		case ONES:
-		ANODES_PORT &= ~(1<<ONES_OFFSET);
+		//ANODES_PORT &= ~(1<<ONES_OFFSET);
+		ANODES_PORT |= 1<<ONES_OFFSET;
 		break;
 		case TENS:
-		ANODES_PORT &= ~(1<<TENS_OFFSET);
+		//ANODES_PORT &= ~(1<<TENS_OFFSET);
+		ANODES_PORT |= 1<<TENS_OFFSET;
 		break;
 		case HUNDREDS:
-		ANODES_PORT &= ~(1<<HUNDREDS_OFFSET);
+		//ANODES_PORT &= ~(1<<HUNDREDS_OFFSET);
+		ANODES_PORT |= 1<<HUNDREDS_OFFSET;
 		break;
 		case THOUSANDS:
-		ANODES_PORT &= ~(1<<THOUSANDS_OFFSET);
+		//ANODES_PORT &= ~(1<<THOUSANDS_OFFSET);
+		ANODES_PORT |= 1<<THOUSANDS_OFFSET;
 		break;
 	}
 	
@@ -236,9 +244,16 @@ void write_4dig_unsigned_number(unsigned int number)
 			p++;				// set next digit position one to the left.
 		}
 		// msb needs to be done with one more at end. Better way to do this in-loop?
-		if (number > 0)
+		if (number > 0) // number is msb
 		{
 			write_digit(p,number,false);
+		}
+		// for clock behaviour will need special cases or functions for minutes/hours/decimals.
+		// like this. Like if less than 10, will want to display 01 02 03 04 05 06 etc, scroll
+		else if (number == 0)
+		{
+			write_digit(ONES,0,false);
+			write_digit(TENS,0,false);
 		}
 	}
 	else
@@ -269,7 +284,7 @@ void write_3dig_signed_number(int number)
 			p++;				// set next digit position one to the left.
 		}
 		// msb needs to be done with one more at end. Better way to do this in-loop?
-		if (number > 0)
+		if (number >= 0)
 		{
 			write_digit(p,number,false);
 		}
@@ -296,35 +311,25 @@ int main(void)
 		
 		// Peter's lib
 		i2c_init();
-		rtc_write(DS3231_CONTROL_REG_OFFSET,0x00);
-		rtc_write(DS3231_HOURS_REG_OFFSET,12);
-		rtc_write(DS3231_MINUTES_REG_OFFSET,47);
-		rtc_write(DS3231_SECONDS_REG_OFFSET,32);
-		unsigned char rtc_data = NEGATIVE_SIGN;
-		//unsigned int  x =0;
 		
+		rtc_write(DS3231_CONTROL_REG_OFFSET,0x00);
+		rtc_write(DS3231_HOURS_REG_OFFSET,12); // these below, not sure for control reg, are not getting written.
+		rtc_write(DS3231_MINUTES_REG_OFFSET,0b00101001); // 29 min
+		rtc_write(DS3231_SECONDS_REG_OFFSET,0b00101000); // 28s
+		uint8_t rtc_data_sec = NEGATIVE_SIGN;
+		uint8_t rtc_data_min = NEGATIVE_SIGN;
+		
+		unsigned int displayValue = NEGATIVE_SIGN;
 		
     	while (1) 
 		{
-			//write_4dig_unsigned_number(882);
-			//write_3dig_signed_number(-1000);
-			
-			//p = ONES;
-			//write_digit(ONES, 2, true);
-			//write_digit(TENS, 3, true);
-			//write_digit(HUNDREDS, 4, true);
-			//write_digit(THOUSANDS, 5, true);
-			
 			// Peter's lib
-			rtc_data = rtc_read(DS3231_SECONDS_REG_OFFSET);
-			//write_4dig_unsigned_number((unsigned int)rtc_data);
-			shift_byte_msb(rtc_data);
-			//write_3dig_signed_number(x);
-			//x++;
-			//_delay_ms(50);
-			//x++;
+			rtc_data_sec = rtc_read(DS3231_SECONDS_REG_OFFSET);
+			rtc_data_min = rtc_read(DS3231_MINUTES_REG_OFFSET);
 			
-			_delay_ms(500);
+			displayValue = toMinutes(rtc_data_min) * 100 + toSeconds(rtc_data_sec);
+			
+			write_4dig_unsigned_number( displayValue );
 		}
 }
 

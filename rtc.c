@@ -10,9 +10,9 @@
 #include "rtc.h"
 #include <stdbool.h>
 
-unsigned char rtc_read(unsigned char reg)
+uint8_t rtc_read(unsigned char reg)
 {
-	unsigned char data;
+	uint8_t data;
 	i2c_start(DS3231_SLAVE_ADDRESS+I2C_WRITE);
 	i2c_write(reg);
 	i2c_stop();
@@ -33,4 +33,16 @@ void rtc_write(unsigned char reg, unsigned char value)
 	i2c_start(DS3231_SLAVE_ADDRESS+I2C_WRITE);
 	i2c_write(value);
 	i2c_stop();
+}
+
+uint8_t toSeconds(uint8_t i2c_seconds_register_read_data)
+{
+	return (i2c_seconds_register_read_data&0x0F)			// 0b0000 1111
+		+ (((i2c_seconds_register_read_data&0x70)>>4)*10);  // 0b0111 0000 >> 4 * 10
+}
+
+uint8_t toMinutes(uint8_t i2c_minutes_register_read_data)
+{
+	return (i2c_minutes_register_read_data&0x0F)			// 0b0000 1111
+		+ (((i2c_minutes_register_read_data&0x70)>>4)*10);		// 0b0111 0000 >> 4 * 10
 }
