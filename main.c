@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define F_CPU 1000000UL
+#define F_CPU 8000000UL
 #include <util/delay.h>
 
 #define HC595_PORT PORTC
@@ -236,10 +236,13 @@ void write_4dig_unsigned_number(unsigned int number)
 	{
 		uint8_t lsb;
 		Position p = ONES;
+		bool clockDp; // testing for clock
 		while (number >= 10)
 		{		
+			clockDp = false; // testing for clock
+			if (p == HUNDREDS) clockDp = true; // testing for clock, >= is fine too since if there is thousands place it is done after loop always with DP off.
 			lsb = number % 10;
-			write_digit(p,lsb,false);
+			write_digit(p,lsb,clockDp);
 			number /= 10;
 			p++;				// set next digit position one to the left.
 		}
@@ -313,9 +316,9 @@ int main(void)
 		i2c_init();
 		
 		rtc_write(DS3231_CONTROL_REG_OFFSET,0x00);
-		rtc_write(DS3231_HOURS_REG_OFFSET,12); // these below, not sure for control reg, are not getting written.
-		rtc_write(DS3231_MINUTES_REG_OFFSET,0b00101001); // 29 min
-		rtc_write(DS3231_SECONDS_REG_OFFSET,0b00101000); // 28s
+		rtc_write(DS3231_HOURS_REG_OFFSET,12); // this may or may not be 12
+		rtc_write(DS3231_MINUTES_REG_OFFSET,toRegisterValue(29)); // 29 min
+		rtc_write(DS3231_SECONDS_REG_OFFSET,toRegisterValue(45)); // 28s
 		uint8_t rtc_data_sec = NEGATIVE_SIGN;
 		uint8_t rtc_data_min = NEGATIVE_SIGN;
 		
@@ -327,9 +330,12 @@ int main(void)
 			rtc_data_sec = rtc_read(DS3231_SECONDS_REG_OFFSET);
 			rtc_data_min = rtc_read(DS3231_MINUTES_REG_OFFSET);
 			
-			displayValue = toMinutes(rtc_data_min) * 100 + toSeconds(rtc_data_sec);
+			//displayValue = toMinutes(rtc_data_min) * 100 + toSeconds(rtc_data_sec);
+			//displayValue = bcd2dec(rtc_data_sec) + bcd2dec(rtc_data_min)*100; // works too
+			displayValue = fromRegisterValue(rtc_data_min) * 100 + fromRegisterValue(rtc_data_sec);
 			
 			write_4dig_unsigned_number( displayValue );
+			
 		}
 }
 
