@@ -14,6 +14,10 @@
 #define F_CPU 8000000UL
 #include <util/delay.h>
 
+//////////////////////////////////////////////////////////////////////////
+/// Shift Register
+//////////////////////////////////////////////////////////////////////////
+
 #define HC595_PORT PORTC
 #define HC595_DDR DDRC
 #define HC595_DATA PORTC2
@@ -103,6 +107,10 @@ void shift_byte_lsb(uint8_t data)
 	hc595_latch_pulse();
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// 7 Segment Display
+//////////////////////////////////////////////////////////////////////////
+
 #define ANODES_PORT PORTD
 #define ANODES_DDR DDRD
 
@@ -129,7 +137,7 @@ typedef enum tag_Position
 	HUNDREDS,
 	THOUSANDS
 } Position;
-
+/*
 //typedef struct tag_SevenSegNumber
 //{
 	//Position 
@@ -146,7 +154,7 @@ typedef enum tag_Position
 	//
 //} SevenSegmentDisplay;
 
-// position
+// position*/
 void write_digit(Position position, uint8_t digit, bool decimalPoint)
 {
 	// dont need the position if you do some math.
@@ -218,7 +226,6 @@ void write_digit(Position position, uint8_t digit, bool decimalPoint)
 	
 	shift_byte_msb(segmentData);
 }
-
 
 void display_error()
 {
@@ -304,8 +311,46 @@ void write_3dig_signed_number(int number)
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// ADC Code
+//////////////////////////////////////////////////////////////////////////
+
+typedef enum tag_adc_channels
+{
+	ADC0 = 0,
+	ADC1,
+	ADC2,
+	ADC3,
+	ADC4,
+	ADC5
+	
+} ADC_CHANNEL;
+
+void adc_init()
+{
+	 // Select Vref=AVcc
+	 ADMUX |= (1<<REFS0);
+	 //set prescaller to 128 and enable ADC
+	 ADCSRA |= (1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0)|(1<<ADEN);
+}
+
+uint16_t adc_read(uint8_t channel)
+{
+	//select ADC channel with safety mask
+	ADMUX = (ADMUX & 0xF0) | (channel & 0x0F);
+	//single conversion mode
+	ADCSRA |= (1<<ADSC);
+	// wait until ADC conversion is complete
+	while( ADCSRA & (1<<ADSC) );
+	return ADC;
+}
+
 #include "i2cmaster.h"
 #include "rtc.h"
+
+// 7 Segment display positions for hours/minutes/seconds
+#define RIGHT 1
+#define LEFT 100
 
 int main(void)
 {
@@ -314,28 +359,64 @@ int main(void)
 		
 		// Peter's lib
 		i2c_init();
+		adc_init();
+		
+		// Start the clock at 12:29:45
 		
 		rtc_write(DS3231_CONTROL_REG_OFFSET,0x00);
-		rtc_write(DS3231_HOURS_REG_OFFSET,12); // this may or may not be 12
-		rtc_write(DS3231_MINUTES_REG_OFFSET,toRegisterValue(29)); // 29 min
-		rtc_write(DS3231_SECONDS_REG_OFFSET,toRegisterValue(45)); // 28s
+		rtc_write(DS3231_HOURS_REG_OFFSET,toRegisterValue(10)); // this may or may not be 12
+		rtc_write(DS3231_MINUTES_REG_OFFSET,toRegisterValue(29));
+		rtc_write(DS3231_SECONDS_REG_OFFSET,toRegisterValue(50));
 		uint8_t rtc_data_sec = NEGATIVE_SIGN;
 		uint8_t rtc_data_min = NEGATIVE_SIGN;
+		uint8_t rtc_data_hour = NEGATIVE_SIGN;
 		
 		unsigned int displayValue = NEGATIVE_SIGN;
 		
+		//uint16_t adcVal = 0;
+		
     	while (1) 
 		{
-			// Peter's lib
+			// Get clock data
 			rtc_data_sec = rtc_read(DS3231_SECONDS_REG_OFFSET);
 			rtc_data_min = rtc_read(DS3231_MINUTES_REG_OFFSET);
+			rtc_data_hour = rtc_read(DS3231_HOURS_REG_OFFSET);
 			
-			//displayValue = toMinutes(rtc_data_min) * 100 + toSeconds(rtc_data_sec);
+			// Display clock data to 7seg
+			
+			// Minutes:Seconds
+			//displayValue = toMinutes(rtc_data_min) * 100 + toSeconds(rtc_data_sec); // shift minutes 2 decimal places.
+			//displayValue = toMinutes(rtc_data_min)*RIGHT + toSeconds(rtc_data_sec)*LEFT;
 			//displayValue = bcd2dec(rtc_data_sec) + bcd2dec(rtc_data_min)*100; // works too
-			displayValue = fromRegisterValue(rtc_data_min) * 100 + fromRegisterValue(rtc_data_sec);
+			//displayValue = fromRegisterValue(rtc_data_min) * 100 + fromRegisterValue(rtc_data_sec);
 			
+			// Hours:Minutes
+			// displayValue = toHours(rtc_data_hour)*100 + toMinutes(rtc_data_min);
+						
+			// Hours:Seconds
+			// displayValue = toHours(rtc_data_hour)*LEFT + toSeconds(rtc_data_sec)*RIGHT;
+			
+			// Hours only
+			displayValue = toHours(rtc_data_hour);
+			
+			// Minutes only
+			//displayValue = toMinutes(rtc_data_min);
+			
+			// Seconds only
+			//displayValue = toSeconds(rtc_data_sec);
+			
+			
+			
+			
+			
+			// Write out to 7 seg
 			write_4dig_unsigned_number( displayValue );
 			
+			
+			
+			//adcVal = adc_read(3);
+			//bcd2dec(adcVal);
+			//write_4dig_unsigned_number(adcVal);
 		}
 }
 

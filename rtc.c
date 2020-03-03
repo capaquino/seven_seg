@@ -35,14 +35,20 @@ void rtc_write(unsigned char reg, unsigned char value)
 
 uint8_t toSeconds(uint8_t i2c_seconds_register_read_data)
 {
-	return (i2c_seconds_register_read_data&0x0F)			// 0b0000 1111
-		+ (((i2c_seconds_register_read_data&0x70)>>4)*10);  // 0b0111 0000 >> 4 * 10
+	return (i2c_seconds_register_read_data&0x0F)			// ones, 0b0000 1111
+		+ (((i2c_seconds_register_read_data&0x70)>>4)*10);  // tens, 0b0111 0000 >> 4 * 10
 }
 
 uint8_t toMinutes(uint8_t i2c_minutes_register_read_data)
 {
-	return (i2c_minutes_register_read_data&0x0F)			// 0b0000 1111
-		+ (((i2c_minutes_register_read_data&0x70)>>4)*10);	// 0b0111 0000 >> 4 * 10
+	return (i2c_minutes_register_read_data&0x0F)			// ones, 0b0000 1111
+		+ (((i2c_minutes_register_read_data&0x70)>>4)*10);	// tens, 0b0111 0000 >> 4 * 10
+}
+
+uint8_t toHours(uint8_t i2c_hours_register_read_data)
+{
+	return (i2c_hours_register_read_data&0x0F)				// ones, mask 0b0000 1111
+		+ (((i2c_hours_register_read_data&0x10)>>4)*10);	// tens, 0b0001 0000 >> 4 * 10
 }
 
 

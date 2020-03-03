@@ -21,6 +21,7 @@ extern uint8_t rtc_read(unsigned char reg);
 extern void rtc_write(unsigned char reg, unsigned char value);
 extern uint8_t toSeconds(uint8_t i2c_seconds_register_read_data);
 extern uint8_t toMinutes(uint8_t i2c_minutes_register_read_data);
+extern uint8_t toHours(uint8_t i2c_hours_register_read_data);
 
 
 extern uint8_t fromRegisterValue(uint8_t hex);
